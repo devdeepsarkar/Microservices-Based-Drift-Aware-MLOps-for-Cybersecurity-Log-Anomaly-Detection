@@ -8,7 +8,6 @@ env/
 .env
 
 # Models & Data
-*.pkl
 *.h5
 *.csv
 data_storage/*.txt
