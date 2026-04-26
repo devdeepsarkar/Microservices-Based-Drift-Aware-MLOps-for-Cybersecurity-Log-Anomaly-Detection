@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+.env
+
+# Models & Data
+*.pkl
+*.h5
+*.csv
+data_storage/*.txt
+data_storage/*.csv
+!data_storage/.gitkeep
+
+# IDEs & OS
+.DS_Store
+.vscode/
+.idea/
