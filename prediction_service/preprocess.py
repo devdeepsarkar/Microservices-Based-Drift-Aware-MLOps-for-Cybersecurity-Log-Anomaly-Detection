@@ -13,6 +13,9 @@ COLUMNS = [
     "dst_host_rerror_rate", "dst_host_srv_rerror_rate"
 ]
 
+
+
+
 def preprocess_input(features_list, preprocessor):
     """
     Takes a single record or multiple records (list of lists) and formats them for prediction.
@@ -23,6 +26,6 @@ def preprocess_input(features_list, preprocessor):
     else:
         # Multiple records
         df = pd.DataFrame(features_list, columns=COLUMNS)
-        
+
     X_processed = preprocessor.transform(df)
     return X_processed

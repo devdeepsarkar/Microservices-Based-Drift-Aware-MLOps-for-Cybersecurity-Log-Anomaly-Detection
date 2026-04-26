@@ -2,7 +2,6 @@ import os
 import joblib
 from data_loader import load_data
 from preprocess import preprocess_data
-from feature_engineering import apply_feature_engineering
 from train import train_model
 from evaluate import evaluate_model
 
@@ -13,11 +12,9 @@ def main():
     
     df_train, df_test = load_data()
     X_train_p, X_test_p, y_train, y_test, preprocessor = preprocess_data(df_train, df_test)
-    
-    X_train_fe, X_test_fe = apply_feature_engineering(X_train_p, X_test_p)
-    
-    model = train_model(X_train_fe)
-    evaluate_model(model, X_test_fe, y_test)
+
+    model = train_model(X_train_p, y_train)
+    evaluate_model(model, X_test_p, y_test)
     
     # Save artifacts
     model_path = os.path.join(MODEL_DIR, "model_v1.pkl")

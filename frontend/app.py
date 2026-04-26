@@ -6,20 +6,24 @@ import io
 # API endpoint configuration
 API_URL = "http://localhost:8000"
 
-COLUMNS = [
-    "duration", "protocol_type", "service", "flag", "src_bytes", "dst_bytes", 
-    "land", "wrong_fragment", "urgent", "hot", "num_failed_logins", "logged_in", 
-    "num_compromised", "root_shell", "su_attempted", "num_root", "num_file_creations", 
-    "num_shells", "num_access_files", "num_outbound_cmds", "is_host_login", 
-    "is_guest_login", "count", "srv_count", "serror_rate", "srv_serror_rate", 
-    "rerror_rate", "srv_rerror_rate", "same_srv_rate", "diff_srv_rate", 
-    "srv_diff_host_rate", "dst_host_count", "dst_host_srv_count", 
-    "dst_host_same_srv_rate", "dst_host_diff_srv_rate", "dst_host_same_src_port_rate", 
-    "dst_host_srv_diff_host_rate", "dst_host_serror_rate", "dst_host_srv_serror_rate", 
-    "dst_host_rerror_rate", "dst_host_srv_rerror_rate", "label", "difficulty_level"
+# 41 feature columns — the only ones the model uses for prediction
+FEATURE_COLUMNS = [
+    "duration", "protocol_type", "service", "flag", "src_bytes", "dst_bytes",
+    "land", "wrong_fragment", "urgent", "hot", "num_failed_logins", "logged_in",
+    "num_compromised", "root_shell", "su_attempted", "num_root", "num_file_creations",
+    "num_shells", "num_access_files", "num_outbound_cmds", "is_host_login",
+    "is_guest_login", "count", "srv_count", "serror_rate", "srv_serror_rate",
+    "rerror_rate", "srv_rerror_rate", "same_srv_rate", "diff_srv_rate",
+    "srv_diff_host_rate", "dst_host_count", "dst_host_srv_count",
+    "dst_host_same_srv_rate", "dst_host_diff_srv_rate", "dst_host_same_src_port_rate",
+    "dst_host_srv_diff_host_rate", "dst_host_serror_rate", "dst_host_srv_serror_rate",
+    "dst_host_rerror_rate", "dst_host_srv_rerror_rate"
 ]
 
-st.set_page_config(page_title="CyberLog Anomaly Detection", layout="wide")
+# Alias used by the Single Prediction tab
+COLUMNS = FEATURE_COLUMNS
+
+st.set_page_config(page_title="CyberSecurity Log Anomaly Detection", layout="wide")
 
 # Custom CSS for more cyberpunk/cybersec colors
 st.markdown("""
@@ -29,9 +33,9 @@ st.markdown("""
         overflow: hidden;
         white-space: nowrap;
         border-right: 0.15em solid #00FF41;
-        width: 38ch; /* Slightly wider to prevent clipping the last letter */
+        width: 48ch;
         animation: 
-            typing 1.5s steps(38, end),
+            typing 2s steps(48, end),
             blink-caret 0.8s step-end infinite;
         color: #00FF41 !important;
         text-shadow: 0px 0px 8px rgba(0, 255, 65, 0.4);
@@ -40,7 +44,7 @@ st.markdown("""
     
     @keyframes typing {
         from { width: 0 }
-        to { width: 38ch }
+        to { width: 48ch }
     }
     
     @keyframes blink-caret {
@@ -101,7 +105,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1 class='typing-title'>[*] CyberLog Anomaly Detection System</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='typing-title'>[*] CyberSecurity Log Anomaly Detection System</h1>", unsafe_allow_html=True)
 st.markdown("""
 Welcome to the Drift-Aware MLOps Dashboard for Cybersecurity. 
 Upload your network logs (NSL-KDD format) to detect anomalies in real-time.
@@ -120,15 +124,18 @@ with tab1:
             
             # Read file to display a preview
             df_preview = pd.read_csv(uploaded_file, header=None)
-            
-            # Apply NSL-KDD column names if applicable
-            if df_preview.shape[1] <= len(COLUMNS):
-                df_preview.columns = COLUMNS[:df_preview.shape[1]]
-            
-            # Ensure all columns are strings to prevent Pandas/Arrow mixed-type warnings
-            df_preview.columns = df_preview.columns.astype(str)
-                
-            st.subheader("Data Preview")
+
+            # Strip label & difficulty_level if present (cols 42 and 43)
+            # Keep only the first 41 feature columns regardless of input size
+            if df_preview.shape[1] > len(COLUMNS):
+                df_preview = df_preview.iloc[:, :len(COLUMNS)]
+
+            if df_preview.shape[1] == len(COLUMNS):
+                df_preview.columns = COLUMNS
+            else:
+                df_preview.columns = df_preview.columns.astype(str)
+
+            st.subheader("Data Preview (41 features)")
             st.dataframe(df_preview.head(), use_container_width=True)
         
         with st.container(border=True):
@@ -145,34 +152,45 @@ with tab1:
                     response = requests.post(f"{API_URL}/predict_batch", files=files)
                     
                     if response.status_code == 200:
-                        predictions = response.json().get("predictions", [])
+                        result_data = response.json()
+                        predictions = result_data.get("predictions", [])
+                        labels = result_data.get("labels", ["anomaly" if p else "normal" for p in predictions])
                         
-                        # Add predictions to the dataframe
                         df_preview["Prediction"] = predictions
-                        df_preview["Status"] = df_preview["Prediction"].apply(lambda x: "Anomaly" if x == 1 else "Normal")
+                        df_preview["Status"] = labels
                         
                         with st.container(border=True):
                             st.success("Analysis Complete!")
-                            
-                            col1, col2 = st.columns(2)
+                            known   = labels.count("confirmed threat")
+                            unknown = labels.count("novel threat")
+                            normal  = labels.count("normal")
+                            col1, col2, col3, col4 = st.columns(4)
                             with col1:
                                 st.metric("Total Logs", len(predictions))
                             with col2:
-                                st.metric("Anomalies Detected", sum(predictions))
+                                st.metric("[+] Normal", normal)
+                            with col3:
+                                st.metric("[!] Confirmed Threats", known)
+                            with col4:
+                                st.metric("[?] Novel Threats", unknown)
                                 
                         with st.container(border=True):
                             st.subheader("Results Preview (Top 1000 rows)")
-                            # Highlight anomalies
-                            def highlight_anomaly(s):
-                                return ['background-color: #8A0E0E; color: white; font-weight: bold;' if v == "Anomaly" else '' for v in s]
+                            def highlight_status(s):
+                                styles = []
+                                for v in s:
+                                    if v == "confirmed threat":
+                                        styles.append('background-color: #8A0E0E; color: white; font-weight: bold;')
+                                    elif v == "novel threat":
+                                        styles.append('background-color: #8A4E00; color: white; font-weight: bold;')
+                                    else:
+                                        styles.append('')
+                                return styles
                             
-                            # Set pandas option just in case, but also limit the preview size for performance
                             pd.set_option("styler.render.max_elements", 10000000)
+                            st.dataframe(df_preview.head(1000).style.apply(highlight_status, subset=['Status']), use_container_width=True)
+                            st.caption("Displaying the top 1000 rows. Full annotated dataset available below.")
                             
-                            st.dataframe(df_preview.head(1000).style.apply(highlight_anomaly, subset=['Status']), use_container_width=True)
-                            st.caption("Displaying the top 1000 rows to ensure browser performance. The full dataset with predictions is available for download.")
-                            
-                            # Download button
                             csv = df_preview.to_csv(index=False).encode('utf-8')
                             st.download_button(
                                 label="Download Annotated Results",
@@ -219,12 +237,18 @@ with tab2:
                         response = requests.post(f"{API_URL}/predict", json={"features": parsed_features})
                         
                         if response.status_code == 200:
-                            anomaly = response.json().get("anomaly")
+                            result = response.json()
+                            label = result.get("label", "")
                             with st.container(border=True):
-                                if anomaly == 1:
-                                    st.error("Anomaly Detected!")
+                                if label == "confirmed threat":
+                                    st.error("[!] Confirmed Threat — Known Attack Pattern (Random Forest)")
+                                    st.caption("This traffic matches a known attack signature in the training dataset.")
+                                elif label == "novel threat":
+                                    st.warning("[?] Novel Threat — Potential Zero-Day (Autoencoder)")
+                                    st.caption("Unusual traffic that doesn't match any known attack. Possible Zero-Day.")
                                 else:
-                                    st.success("Normal Traffic")
+                                    st.success("[+] Normal Traffic")
+                                    st.caption("Both Random Forest and Autoencoder classify this as normal traffic.")
                         else:
                             st.error(f"API Error: {response.text}")
             except Exception as e:

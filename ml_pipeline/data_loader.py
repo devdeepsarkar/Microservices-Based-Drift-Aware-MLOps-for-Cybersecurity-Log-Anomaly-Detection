@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import requests
+from sklearn.model_selection import train_test_split
 
 TRAIN_URL = "https://raw.githubusercontent.com/defcom17/NSL_KDD/master/KDDTrain+.txt"
 TEST_URL = "https://raw.githubusercontent.com/defcom17/NSL_KDD/master/KDDTest+.txt"
@@ -31,13 +32,11 @@ def download_file(url, filepath):
 def load_data():
     os.makedirs(DATA_DIR, exist_ok=True)
     train_path = os.path.join(DATA_DIR, "KDDTrain+.txt")
-    test_path = os.path.join(DATA_DIR, "KDDTest+.txt")
     
     download_file(TRAIN_URL, train_path)
-    download_file(TEST_URL, test_path)
     
     print("Loading data...")
-    df_train = pd.read_csv(train_path, names=COLUMNS)
-    df_test = pd.read_csv(test_path, names=COLUMNS)
+    df = pd.read_csv(train_path, names=COLUMNS)
+    df_train, df_test = train_test_split(df, test_size=0.2, random_state=42)
     
     return df_train, df_test

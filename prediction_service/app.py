@@ -1,86 +1,100 @@
+"""
+app.py
+------
+FastAPI entry point for the MLOps Prediction Service.
+Responsibilities: define routes, validate input, return predictions.
+Model loading and class blueprints are handled by model_loader.py.
+
+Prediction labels:
+  0 → normal
+  1 → anomaly (known)
+  2 → anomaly (unknown / Zero-Day)
+"""
+import io
+
+import numpy as np
+import pandas as pd
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
-import joblib
-import os
-import io
-import pandas as pd
 from typing import List, Any
-import numpy as np
 
+from model_loader import load_artifacts
 from preprocess import preprocess_input, COLUMNS
 from utils import log_prediction
 
 app = FastAPI(title="MLOps Prediction Service")
 
-# Load models on startup
-MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
-MODEL_PATH = os.path.join(MODEL_DIR, "model_v1.pkl")
-PREPROCESSOR_PATH = os.path.join(MODEL_DIR, "preprocessor.pkl")
+# Load pre-trained artifacts once at startup
+model, preprocessor = load_artifacts()
 
-try:
-    model = joblib.load(MODEL_PATH)
-    preprocessor = joblib.load(PREPROCESSOR_PATH)
-    print("Models loaded successfully.")
-except Exception as e:
-    print(f"Error loading models: {e}")
-    model = None
-    preprocessor = None
+LABEL_MAP = {
+    0: "normal",
+    1: "confirmed threat",   # RF detected a known attack signature
+    2: "novel threat"        # Autoencoder flagged a potential Zero-Day
+}
+
 
 class PredictionRequest(BaseModel):
     features: List[Any]
 
+
 @app.post("/predict")
 def predict(request: PredictionRequest):
+    """Single-record prediction endpoint."""
     if not model or not preprocessor:
         raise HTTPException(status_code=500, detail="Models not loaded")
-        
+
     features = request.features
     if len(features) != len(COLUMNS):
-        raise HTTPException(status_code=400, detail=f"Expected {len(COLUMNS)} features, got {len(features)}")
-        
+        raise HTTPException(
+            status_code=400,
+            detail=f"Expected {len(COLUMNS)} features, got {len(features)}"
+        )
+
     try:
         X_p = preprocess_input(features, preprocessor)
-        y_pred_raw = model.predict(X_p)
-        # Convert IF outputs (-1 anomaly, 1 normal) to (1 anomaly, 0 normal)
-        anomaly = 1 if y_pred_raw[0] == -1 else 0
-        
+        pred = int(model.predict(X_p)[0])
+        label = LABEL_MAP.get(pred, "unknown")
+        # anomaly flag: 0 = normal, 1 = any anomaly (for dashboard compatibility)
+        anomaly = 0 if pred == 0 else 1
         log_prediction(features, anomaly)
-        
-        return {"anomaly": anomaly}
+        return {"anomaly": anomaly, "label": label, "code": pred}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/predict_batch")
 async def predict_batch(file: UploadFile = File(...)):
-    """Accepts a CSV file of features without headers and predicts for each row."""
+    """Batch prediction endpoint — accepts a CSV file without headers."""
     if not model or not preprocessor:
         raise HTTPException(status_code=500, detail="Models not loaded")
-        
+
     try:
         contents = await file.read()
-        df = pd.read_csv(io.StringIO(contents.decode('utf-8')), header=None)
-        
-        # If the user uploaded a file with more columns (e.g. including labels), truncate to 41.
+        df = pd.read_csv(io.StringIO(contents.decode("utf-8")), header=None)
+
         if df.shape[1] > len(COLUMNS):
             df = df.iloc[:, :len(COLUMNS)]
-            
-        # If it has fewer columns, it's invalid
+
         if df.shape[1] < len(COLUMNS):
-            raise HTTPException(status_code=400, detail=f"Expected at least {len(COLUMNS)} features, got {df.shape[1]}")
-            
+            raise HTTPException(
+                status_code=400,
+                detail=f"Expected at least {len(COLUMNS)} features, got {df.shape[1]}"
+            )
+
         df.columns = COLUMNS
-        
         X_p = preprocessor.transform(df)
-        y_pred_raw = model.predict(X_p)
-        anomalies = np.where(y_pred_raw == -1, 1, 0).tolist()
-        
-        # Log all predictions
+        preds = model.predict(X_p).tolist()
+        labels = [LABEL_MAP.get(p, "unknown") for p in preds]
+        anomalies = [0 if p == 0 else 1 for p in preds]
+
         for idx, row in df.iterrows():
             log_prediction(row.tolist(), anomalies[idx])
-            
-        return {"predictions": anomalies}
+
+        return {"predictions": anomalies, "labels": labels, "codes": preds}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn
