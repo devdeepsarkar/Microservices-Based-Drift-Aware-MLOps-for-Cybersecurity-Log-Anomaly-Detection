@@ -9,10 +9,6 @@ env/
 
 # Models & Data
 *.h5
-*.csv
-data_storage/*.txt
-data_storage/*.csv
-!data_storage/.gitkeep
 
 # IDEs & OS
 .DS_Store
