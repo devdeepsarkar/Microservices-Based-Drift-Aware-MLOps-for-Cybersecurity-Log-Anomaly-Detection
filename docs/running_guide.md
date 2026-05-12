@@ -26,15 +26,33 @@ Complete step-by-step guide from initial training to drift-triggered retraining.
 
 ## Prerequisites
 
+### 1. Create Virtual Environment & Install Dependencies (First Time Only)
+
 **macOS / Linux:**
 ```bash
 cd "Microservices-Based Drift-Aware MLOps for Cybersecurity Log Anomaly Detection"
+python3 -m venv venv
 source venv/bin/activate
+pip install -r frontend/requirements.txt -r drift_service/requirements.txt
 ```
 
 **PowerShell (Windows):**
 ```powershell
 cd "Microservices-Based Drift-Aware MLOps for Cybersecurity Log Anomaly Detection"
+python -m venv venv
+venv\Scripts\Activate.ps1
+pip install -r frontend/requirements.txt -r drift_service/requirements.txt
+```
+
+### 2. Activate Virtual Environment (Every Time)
+
+**macOS / Linux:**
+```bash
+source venv/bin/activate
+```
+
+**PowerShell (Windows):**
+```powershell
 venv\Scripts\Activate.ps1
 ```
 
