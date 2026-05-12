@@ -6,19 +6,21 @@ Complete step-by-step guide from initial training to drift-triggered retraining.
 
 ---
 
-## macOS / Linux vs Windows — Command Reference
+## Platform Command Reference
 
-| Action | macOS / Linux | Windows (CMD) |
+| Action | macOS / Linux | PowerShell (Windows) |
 |---|---|---|
-| Activate venv | `source venv/bin/activate` | `venv\Scripts\activate` |
-| Run all services | `./run.sh` | `run.bat` (double-click or `.\run.bat`) |
-| Path separator | `/` | `\` |
-| Check drift status | `curl http://localhost:8001/drift/status` | `curl.exe http://localhost:8001/drift/status` |
-| Trigger retrain | `curl -X POST http://localhost:8001/drift/retrain` | `curl.exe -X POST http://localhost:8001/drift/retrain` |
-| Stop a service | `Ctrl+C` in terminal | Close the CMD window for that service |
+| Activate venv | `source venv/bin/activate` | `venv\Scripts\Activate.ps1` |
+| Run all services | `./run.sh` | `.\run.ps1` |
+| Check drift status | `curl localhost:8001/drift/status` | `Invoke-RestMethod localhost:8001/drift/status` |
+| Trigger retrain | `curl -X POST localhost:8001/drift/retrain` | `Invoke-RestMethod -Method POST localhost:8001/drift/retrain` |
+| Stop a service | `Ctrl+C` | Close the PowerShell window, or `Stop-Process -Id <PID>` |
 
-> **Windows tip:** Use **PowerShell** or **Windows Terminal** for the best experience.
-> `curl` is available in Windows 10+ as `curl.exe`.
+> **PowerShell note:** On first run, allow script execution with:
+> ```powershell
+> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+> ```
+> `curl` in PowerShell is an alias for `Invoke-WebRequest`. Use `Invoke-RestMethod` instead for clean JSON output.
 
 ---
 
@@ -30,10 +32,10 @@ cd "Microservices-Based Drift-Aware MLOps for Cybersecurity Log Anomaly Detectio
 source venv/bin/activate
 ```
 
-**Windows (CMD):**
-```cmd
+**PowerShell (Windows):**
+```powershell
 cd "Microservices-Based Drift-Aware MLOps for Cybersecurity Log Anomaly Detection"
-venv\Scripts\activate
+venv\Scripts\Activate.ps1
 ```
 
 ---
