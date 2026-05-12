@@ -46,7 +46,7 @@ ML Pipeline completed successfully.
 
 ## Phase 2 — Start the 3 Services (Each in a Separate Terminal)
 
-### Terminal 1 — Prediction Service
+### Terminal 1 — Prediction Service (Backend)
 ```bash
 source venv/bin/activate
 cd prediction_service
