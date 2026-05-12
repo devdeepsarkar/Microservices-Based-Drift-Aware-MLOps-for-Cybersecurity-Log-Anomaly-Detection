@@ -96,6 +96,21 @@ async def predict_batch(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
+
+@app.post("/reload")
+def reload_model():
+    """
+    Hot-reload model artifacts from disk without restarting the server.
+    Called automatically by the drift service after retraining completes.
+    """
+    global model, preprocessor
+    model, preprocessor = load_artifacts()
+    if model and preprocessor:
+        return {"status": "reloaded", "message": "Model artifacts reloaded successfully."}
+    raise HTTPException(status_code=500, detail="Failed to reload model artifacts.")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

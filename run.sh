@@ -3,25 +3,34 @@
 echo "Activating virtual environment..."
 source venv/bin/activate
 
-echo "Starting FastAPI Backend..."
+echo "Starting FastAPI Prediction Service (port 8000)..."
 cd prediction_service
 python app.py &
 BACKEND_PID=$!
 cd ..
 
-echo "Waiting for backend to start..."
+echo "Waiting for prediction service to start..."
 sleep 3
 
-echo "Starting Streamlit Frontend..."
+echo "Starting Drift Detection Service (port 8001)..."
+cd drift_service
+python app.py &
+DRIFT_PID=$!
+cd ..
+
+echo "Starting Streamlit Frontend (port 8501)..."
 streamlit run frontend/app.py &
 FRONTEND_PID=$!
 
-echo "Both services are running!"
-echo "Backend PID: $BACKEND_PID"
-echo "Frontend PID: $FRONTEND_PID"
-echo "Press Ctrl+C to stop both services."
+echo ""
+echo "All services are running!"
+echo "  Prediction Service : http://localhost:8000  (PID: $BACKEND_PID)"
+echo "  Drift Service      : http://localhost:8001  (PID: $DRIFT_PID)"
+echo "  Dashboard          : http://localhost:8501  (PID: $FRONTEND_PID)"
+echo ""
+echo "Press Ctrl+C to stop all services."
 
-# Trap Ctrl+C (SIGINT) to kill background processes
-trap "echo 'Stopping services...'; kill $BACKEND_PID; kill $FRONTEND_PID; exit" SIGINT
+# Stop all background services on Ctrl+C
+trap "echo 'Stopping services...'; kill $BACKEND_PID $DRIFT_PID $FRONTEND_PID 2>/dev/null; exit" SIGINT
 
 wait
