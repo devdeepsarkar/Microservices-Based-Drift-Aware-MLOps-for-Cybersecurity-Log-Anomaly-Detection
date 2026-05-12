@@ -2,13 +2,38 @@
 
 Complete step-by-step guide from initial training to drift-triggered retraining.
 
+> **Platform note:** Commands are shown for macOS/Linux. See the Windows equivalents table below.
+
+---
+
+## macOS / Linux vs Windows — Command Reference
+
+| Action | macOS / Linux | Windows (CMD) |
+|---|---|---|
+| Activate venv | `source venv/bin/activate` | `venv\Scripts\activate` |
+| Run all services | `./run.sh` | `run.bat` (double-click or `.\run.bat`) |
+| Path separator | `/` | `\` |
+| Check drift status | `curl http://localhost:8001/drift/status` | `curl.exe http://localhost:8001/drift/status` |
+| Trigger retrain | `curl -X POST http://localhost:8001/drift/retrain` | `curl.exe -X POST http://localhost:8001/drift/retrain` |
+| Stop a service | `Ctrl+C` in terminal | Close the CMD window for that service |
+
+> **Windows tip:** Use **PowerShell** or **Windows Terminal** for the best experience.
+> `curl` is available in Windows 10+ as `curl.exe`.
+
 ---
 
 ## Prerequisites
 
+**macOS / Linux:**
 ```bash
 cd "Microservices-Based Drift-Aware MLOps for Cybersecurity Log Anomaly Detection"
 source venv/bin/activate
+```
+
+**Windows (CMD):**
+```cmd
+cd "Microservices-Based Drift-Aware MLOps for Cybersecurity Log Anomaly Detection"
+venv\Scripts\activate
 ```
 
 ---
