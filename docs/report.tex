@@ -1,0 +1,169 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{geometry}
+\usepackage{booktabs}
+\geometry{a4paper, margin=1in}
+
+\title{\textbf{SPE Final Project Report} \\ Microservices-Based Drift-Aware MLOps for Cybersecurity Log Anomaly Detection}
+\author{Group Members \\ [Your Name] – [Roll No] \\ [Team Member 2] – [Roll No]}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{System Overview}
+The system is a cloud-native, microservices-driven MLOps platform designed for cybersecurity log anomaly detection. It provides real-time inference on network traffic logs to detect known and zero-day threats. The architecture integrates a hybrid machine learning model (Random Forest + Autoencoder) with automated drift detection and retraining capabilities. It follows robust DevOps practices encompassing containerization, CI/CD, orchestration, and centralized logging to ensure high availability and continuous deployment.
+
+\subsection{Core Functionalities}
+\begin{itemize}
+    \item Real-time threat detection using a hybrid ML model.
+    \item Automated drift detection based on Anomaly Rate and Feature Distribution (KS-Test).
+    \item Zero-downtime hot-swapping of models upon retraining.
+    \item Scalable microservices orchestrated via Kubernetes with HPA.
+    \item Secure storage using HashiCorp Vault.
+    \item Centralized logging and monitoring using the ELK Stack.
+    \item Automated CI/CD pipelines via Jenkins.
+\end{itemize}
+
+\subsection{High-Level Architecture Flow}
+The frontend interface routes requests to the Prediction Service, which evaluates incoming network logs against the hybrid model. Predictions are appended to a shared log file. The Drift Detection Service continuously monitors these logs against baseline statistics. Upon detecting drift, an automated retraining pipeline is triggered, and the new model is hot-loaded into the Prediction Service without downtime.
+
+% Suggestion: Add an architecture diagram showing the user, frontend, prediction service, drift service, ML pipeline, and the DevOps stack.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=\textwidth]{images/high_level_architecture.png}
+%     \caption{High-Level System Architecture and Request Flow}
+% \end{figure}
+
+\section{Overall System Architecture}
+The system utilizes a microservices architecture to decouple the frontend, prediction engine, drift monitoring, and ML pipeline. The infrastructure is managed using a robust DevOps framework.
+
+\subsection{Backend Microservices Architecture}
+The backend consists of the following 4 microservices/components:
+\begin{enumerate}
+    \item \textbf{Prediction Service (FastAPI):} Serves the ML model, exposing REST APIs for single and batch predictions.
+    \item \textbf{Drift Detection Service (FastAPI):} Monitors prediction logs, performs statistical tests, and exposes drift status and reports.
+    \item \textbf{Frontend Service (Streamlit):} Provides the interactive dashboard for users to upload logs and view threat classifications.
+    \item \textbf{ML Pipeline Service (Offline/Batch):} Handles data downloading, preprocessing, training, and baseline generation.
+\end{enumerate}
+
+\section{Technology Stack}
+\begin{itemize}
+    \item \textbf{Frontend:} Streamlit
+    \item \textbf{Backend:} Python, FastAPI, Uvicorn
+    \item \textbf{Machine Learning:} Scikit-Learn, Pandas, NumPy, SciPy
+    \item \textbf{Version Control:} Git, GitHub
+    \item \textbf{CI/CD Automation:} Jenkins, GitHub Webhooks
+    \item \textbf{Containerization:} Docker, Docker Compose
+    \item \textbf{Configuration Management:} Ansible (Roles and Playbooks)
+    \item \textbf{Orchestration \& Scaling:} Kubernetes (K8s), Horizontal Pod Autoscaling (HPA)
+    \item \textbf{Monitoring \& Logging:} ELK Stack (Elasticsearch, Logstash, Kibana), Filebeat
+    \item \textbf{Security:} HashiCorp Vault (Secrets Management)
+\end{itemize}
+
+% Suggestion: Add an image of the technology stack layout.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{images/tech_stack.png}
+%     \caption{Technology Stack Overview}
+% \end{figure}
+
+\section{Frontend Architecture and Implementation}
+The Frontend Service is built using Streamlit, offering a reactive UI for cybersecurity analysts. 
+Users can upload batch CSV files containing network features (NSL-KDD format) or manually enter feature values. The frontend securely communicates with the Prediction Service's REST APIs.
+
+% Suggestion: Add screenshots of the Streamlit dashboard (e.g., File Upload, Prediction Results).
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{images/frontend_dashboard.png}
+%     \caption{Streamlit Frontend Dashboard}
+% \end{figure}
+
+\section{Backend Architecture and Implementation}
+
+\subsection{Prediction Service}
+The Prediction Service is a highly concurrent FastAPI application. It loads the \texttt{model\_v1.pkl} and \texttt{preprocessor.pkl} into memory.
+\textbf{APIs:}
+\begin{itemize}
+    \item \texttt{POST /predict}: Accepts 41 features, returns a single prediction (Normal, Confirmed Threat, Novel Threat).
+    \item \texttt{POST /predict\_batch}: Accepts a CSV file, returns bulk predictions.
+    \item \texttt{POST /reload}: Hot-reloads the ML models in-memory without server restart (Zero-downtime).
+\end{itemize}
+
+\subsection{Drift Detection Service}
+This service calculates statistical deviations between the live production data and the training baseline.
+\textbf{APIs:}
+\begin{itemize}
+    \item \texttt{GET /health}: Service health check.
+    \item \texttt{GET /drift/status}: Returns a quick boolean flag if drift is detected.
+    \item \texttt{GET /drift/report}: Returns a detailed JSON report containing KS-Statistic and p-values for all 38 numeric features.
+    \item \texttt{POST /drift/retrain}: Triggers the background ML retraining process and invokes the prediction service's reload API.
+\end{itemize}
+
+\subsection{ML Pipeline (Training \& Retraining)}
+A decoupled pipeline that fetches the NSL-KDD dataset, permanently splits it into initial training (70\%) and reserve (30\%), and trains the Hybrid Anomaly Detector. It exports the model artifacts and \texttt{baseline\_stats.json}.
+
+\section{DevOps and Infrastructure}
+
+\subsection{CI/CD Automation with Jenkins}
+Jenkins automates the entire software delivery lifecycle. Any incremental push to the GitHub repository triggers a GitHub Webhook, causing Jenkins to:
+\begin{enumerate}
+    \item Checkout the latest code.
+    \item Run automated tests.
+    \item Build Docker images for the 4 microservices.
+    \item Push the images to Docker Hub.
+    \item Trigger continuous deployment to the Kubernetes cluster.
+\end{enumerate}
+
+% Suggestion: Add a screenshot of the Jenkins Pipeline success stages.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=\textwidth]{images/jenkins_pipeline.png}
+%     \caption{Jenkins CI/CD Pipeline Stages}
+% \end{figure}
+
+\subsection{Containerization and Configuration Management}
+All services are containerized using Docker. Multi-container orchestration is defined via \texttt{Docker Compose} for local environments. For broader infrastructure provisioning, \textbf{Ansible Playbooks} are utilized. Modular Ansible Roles are designed to automatically provision servers, install Docker/K8s dependencies, and configure network settings consistently.
+
+\subsection{Kubernetes Orchestration and Security}
+The production environment runs on a Kubernetes (K8s) cluster. 
+\begin{itemize}
+    \item \textbf{Deployments \& Services:} Each microservice runs as a scalable Deployment exposed via ClusterIP.
+    \item \textbf{High Availability:} Horizontal Pod Autoscaling (HPA) dynamically scales the Prediction Service based on CPU/Memory utilization during high traffic spikes.
+    \item \textbf{Live Patching:} The FastAPI \texttt{/reload} endpoint ensures live patching of the ML model without dropping active HTTP connections.
+    \item \textbf{Security (Vault):} Sensitive credentials (such as Docker Hub tokens and API keys) are securely injected into the K8s pods using HashiCorp Vault.
+\end{itemize}
+
+% Suggestion: Add an image of Kubernetes nodes/pods running or the HPA in action.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=\textwidth]{images/k8s_pods.png}
+%     \caption{Kubernetes Pods and HPA configuration}
+% \end{figure}
+
+\subsection{Monitoring and Logging (ELK Stack)}
+To ensure complete observability, centralized logging is achieved via the ELK Stack:
+\begin{itemize}
+    \item \textbf{Elasticsearch:} Stores and indexes all prediction logs and system access logs.
+    \item \textbf{Logstash / Filebeat:} Captures logs from Kubernetes containers and forwards them.
+    \item \textbf{Kibana:} Provides analytical dashboards visualizing threat detection rates, anomaly counts, and system performance metrics over time.
+\end{itemize}
+
+% Suggestion: Add a screenshot of the Kibana dashboard showing anomaly logs.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=\textwidth]{images/kibana_dashboard.png}
+%     \caption{Kibana Dashboard visualizing Log Anomalies}
+% \end{figure}
+
+\section{Conclusion}
+This project successfully integrates advanced Machine Learning algorithms with modern DevOps principles. The system not only detects cyber threats accurately using a Hybrid Model but ensures the model's longevity via autonomous Drift Detection and Retraining. Through Jenkins, Kubernetes, Ansible, Vault, and ELK, the platform achieves robust CI/CD, high availability, security, and deep observability, fulfilling the requirements of a production-grade MLOps architecture.
+
+\end{document}
